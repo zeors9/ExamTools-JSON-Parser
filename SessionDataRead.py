@@ -10,7 +10,7 @@ import datetime
 class Sessions:
     sessions = {}
     
-    def __init__(self, Logger=None):
+    def __init__(self, Logger):
         self.logger = Logger
 
         savedSessionData = os.path.join('.', 'SessionData.shn')
@@ -39,47 +39,56 @@ class Sessions:
                 files.append(os.path.join(inputPath, each))
 
         for file in files:
-            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Processing file: {file}")   
-            sessionData = js.JSONDecoder().decode(open(file).read())
-        
-            leadCall = sessionData['teamLead']['call']
-            sessionDate = sessionData['date']
-            sessionID = str(hashlib.sha512((f"{leadCall}-{sessionDate}").encode()).hexdigest())
-            
-            veList = pd.DataFrame(sessionData['VEs'])
-            applicantList = pd.DataFrame(sessionData['applicants'])
-            signingVEList = applicantList["signingVes"].dropna()
-
-            if sessionID in self.sessions["LoadedSessionIDs"]:
-                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Duplicate session ID: {sessionID} \n File: {file}")
-            else: 
-                if self.logger is not None:
-                    self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: New session ID: {sessionID}")
-                self.sessions["LoadedSessionIDs"].append(sessionID)
-                if leadCall not in self.sessions["VETeamLeads"]:
-                    veList["SessionCount"] = 1
-                    signingVEList["SessionCount"] = 1
-                    
-                    leadTemplate = {leadCall: {"VEList": veList, "Applicants": applicantList, "SigningVEList":  signingVEList}}
-                    self.sessions["VETeamLeads"].update(leadTemplate)
-                else:
-                    for ve in veList["call"]:
-                        if ve not in self.sessions["VETeamLeads"][leadCall]["VEList"]["call"].values:
-                            self.sessions["VETeamLeads"][leadCall]["VEList"] = self.sessions["VETeamLeads"][leadCall]["VEList"].append(veList[veList["call"] == ve], ignore_index=True)
-                        else:
-                            self.sessions["VETeamLeads"][leadCall]["VEList"].loc[self.sessions["VETeamLeads"][leadCall]["VEList"]["call"] == ve, "SessionCount"] += 1
             if self.logger is not None:
-                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished processing file: {file}")
-            if(not os.path.exists(archivePath)):
-                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Archive path {archivePath} does not exist. Creating it.")
-                os.mkdir(archivePath)
-            os.rename(file, f"{os.path.join(archivePath, file.split(os.sep)[-1])}")
+                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Processing file: {file}")   
+            try:
+                sessionData = js.JSONDecoder().decode(open(file).read())
+            
+                leadCall = sessionData['teamLead']['call']
+                sessionDate = sessionData['date']
+                sessionID = str(hashlib.sha512((f"{leadCall}-{sessionDate}").encode()).hexdigest())
+                
+                veList = pd.DataFrame(sessionData['VEs'])
+                applicantList = pd.DataFrame(sessionData['applicants'])
+                signingVEList = applicantList["signingVes"].dropna()
+
+                if sessionID in self.sessions["LoadedSessionIDs"]:
+                    if self.logger is not None:
+                        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Duplicate session ID: {sessionID} \n File: {file}")
+                else: 
+                    if self.logger is not None:
+                        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: New session ID: {sessionID}")
+                    self.sessions["LoadedSessionIDs"].append(sessionID)
+                    if leadCall not in self.sessions["VETeamLeads"]:
+                        veList["SessionCount"] = 1
+                        signingVEList["SessionCount"] = 1
+                        
+                        leadTemplate = {leadCall: {"VEList": veList, "Applicants": applicantList, "SigningVEList":  signingVEList}}
+                        self.sessions["VETeamLeads"].update(leadTemplate)
+                    else:
+                        for ve in veList["call"]:
+                            if ve not in self.sessions["VETeamLeads"][leadCall]["VEList"]["call"].values:
+                                newRow = pd.DataFrame([{"call": ve, "name": veList[veList["call"] == ve ]["name"].values[0], "SessionCount": 1 }])
+                                self.sessions["VETeamLeads"][leadCall]["VEList"] = pd.concat([self.sessions["VETeamLeads"][leadCall]["VEList"], newRow])
+                            else:
+                                self.sessions["VETeamLeads"][leadCall]["VEList"].loc[self.sessions["VETeamLeads"][leadCall]["VEList"]["call"] == ve, "SessionCount"] += 1
+                if self.logger is not None:
+                    self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished processing file: {file}")
+                if(not os.path.exists(archivePath)):
+                    if self.logger is not None:
+                        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Archive path {archivePath} does not exist. Creating it.")
+                    os.mkdir(archivePath)
+                os.rename(file, f"{os.path.join(archivePath, file.split(os.sep)[-1])}")
+            except Exception as e:
+                if self.logger is not None:
+                    self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while processing file {file}: {e}")
         if self.logger is not None:
             self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished reading session JSON files.")
         try:
             self.SaveSessionData("SessionData")
         except Exception as e:
-            self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while saving session data: {e}")
+            if self.logger is not None:
+                self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while saving session data: {e}")
 
     def OutputSessionsData(self, teamName, outputPath, outputFile):
         pass
@@ -103,7 +112,8 @@ class Sessions:
                     self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Directory exists. Opening...")
                 os.startfile(path)
         except Exception as e:
-            self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while opening directory: {e}")
+            if self.logger is not None:
+                self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while opening directory: {e}")
 
     def SaveSessionData(self, fileName):
         if self.logger is not None:

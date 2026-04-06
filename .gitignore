@@ -6,6 +6,7 @@
 *.shn
 *.pkl
 *.bat
+*.ini
 
 # PyInstaller
 /dist/*
@@ -240,3 +241,4 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+settings.ini
