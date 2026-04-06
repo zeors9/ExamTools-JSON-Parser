@@ -32,7 +32,8 @@ class Sessions:
 
     def ReadSessionJson(self, inputPath, archivePath):
         files = []
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Reading session JSON files from {inputPath}...")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Reading session JSON files from {inputPath}...")
         for each in os.listdir(inputPath):
             if each.endswith('.json'):
                 files.append(os.path.join(inputPath, each))
@@ -52,7 +53,8 @@ class Sessions:
             if sessionID in self.sessions["LoadedSessionIDs"]:
                 self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Duplicate session ID: {sessionID} \n File: {file}")
             else: 
-                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: New session ID: {sessionID}")
+                if self.logger is not None:
+                    self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: New session ID: {sessionID}")
                 self.sessions["LoadedSessionIDs"].append(sessionID)
                 if leadCall not in self.sessions["VETeamLeads"]:
                     veList["SessionCount"] = 1
@@ -66,12 +68,14 @@ class Sessions:
                             self.sessions["VETeamLeads"][leadCall]["VEList"] = self.sessions["VETeamLeads"][leadCall]["VEList"].append(veList[veList["call"] == ve], ignore_index=True)
                         else:
                             self.sessions["VETeamLeads"][leadCall]["VEList"].loc[self.sessions["VETeamLeads"][leadCall]["VEList"]["call"] == ve, "SessionCount"] += 1
-            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished processing file: {file}")
+            if self.logger is not None:
+                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished processing file: {file}")
             if(not os.path.exists(archivePath)):
                 self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Archive path {archivePath} does not exist. Creating it.")
                 os.mkdir(archivePath)
             os.rename(file, f"{os.path.join(archivePath, file.split(os.sep)[-1])}")
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished reading session JSON files.")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Finished reading session JSON files.")
         try:
             self.SaveSessionData("SessionData")
         except Exception as e:
@@ -81,7 +85,8 @@ class Sessions:
         pass
     
     def getVETeams(self):
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Retrieving VETeam names.")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Retrieving VETeam names.")
         return list(self.sessions["VETeamLeads"].keys())
 
     def OutputVEList(self, teamName, outputPath, outputFile):
@@ -90,20 +95,24 @@ class Sessions:
             .to_excel(f"{os.path.join(outputPath, outputFile)}.xlsx", index=False)
 
     def OpenDirectory(self, path):
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Opening directory: {path}")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Opening directory: {path}")
         try:
             if os.path.exists(path):
-                self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Directory exists. Opening...")
+                if self.logger is not None:
+                    self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Directory exists. Opening...")
                 os.startfile(path)
         except Exception as e:
             self.logger.error(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Error occurred while opening directory: {e}")
 
     def SaveSessionData(self, fileName):
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Saving session data to {fileName}.shn")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Saving session data to {fileName}.shn")
         with open(f'{fileName}.shn', 'wb') as file:
             pickle.dump(self.sessions, file, protocol=pickle.HIGHEST_PROTOCOL)
     
     def LoadSessionData(self, fileName):
-        self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Loading session data from {fileName}.shn")
+        if self.logger is not None:
+            self.logger.info(f"{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}: Loading session data from {fileName}.shn")
         with open(f'{fileName}.shn', 'rb') as file:
             self.sessions = pickle.load(file)

@@ -47,7 +47,7 @@ class main:
             logging.basicConfig(level=logging.CRITICAL)
         logger.info(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}: App Started')
 
-        self.sessions = SessionDataRead.Sessions()
+        self.sessions = SessionDataRead.Sessions(logger)
         try:
             logger.info(f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}: Reading session JSON from {self.ImportDirectory} and archiving to {self.ArchiveDirectory}')
             self.sessions.ReadSessionJson(self.ImportDirectory, self.ArchiveDirectory)
